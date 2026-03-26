@@ -15,8 +15,6 @@ env:
 jobs:
   release:
     name: Release
-    env:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -111,6 +109,15 @@ jobs:
         run: dotnet test --configuration Release /p:Version=${{ steps.version.outputs.release_version }}
 
       - name: Validate NuGet API key
+        if: matrix.target == 'linux-x64'
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BW_ACCESS_TOKEN }}
+          base_url: https://vault.bitwarden.eu
+          secrets: |
+            265b2fb6-2cf0-4859-9bc8-b24c00ab4378 > NUGET_API_KEY
+
+      - name: Check NuGet API key
         if: matrix.target == 'linux-x64'
         shell: bash
         run: |
