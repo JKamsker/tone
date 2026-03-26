@@ -2,6 +2,8 @@ name: release
 
 on: 
   push:
+    branches:
+    - 'main'
     tags:
     - 'v*'
 env:
@@ -67,21 +69,35 @@ jobs:
         env:
             NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
       
-      - name: Get version
+      - name: Compute versions
         id: version
-        uses: battila7/get-version-action@v2
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            release_version="${GITHUB_REF_NAME#v}"
+            release_tag="${GITHUB_REF_NAME}"
+          else
+            release_version="0.0.${GITHUB_RUN_NUMBER}"
+            release_tag=""
+          fi
+
+          package_version="0.0.${GITHUB_RUN_NUMBER}"
+
+          echo "release_version=${release_version}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+          echo "package_version=${package_version}" >> "$GITHUB_OUTPUT"
 
       - name: Build
         id: build
         shell: bash
         run: |
-          release_name="${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}-${{ matrix.target }}"
+          release_name="${{ env.PROJECT_NAME }}-${{ steps.version.outputs.release_version }}-${{ matrix.target }}"
 
           
           if [ "${{ matrix.target }}" == "osx-arm64" ]; then
-            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:Version=${{ steps.version.outputs.version-without-v }} -p:EnableCompressionInSingleFile=false -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
+            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:Version=${{ steps.version.outputs.release_version }} -p:EnableCompressionInSingleFile=false -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
           else 
-            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:Version=${{ steps.version.outputs.version-without-v }} -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
+            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:Version=${{ steps.version.outputs.release_version }} -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
           fi
           
           if [ "${{ matrix.target }}" == "win-x64" ]; then
@@ -91,7 +107,7 @@ jobs:
           fi
           rm -r "$release_name"
       - name: Test
-        run: dotnet test --configuration Release /p:Version=${{ steps.version.outputs.version-without-v }}
+        run: dotnet test --configuration Release /p:Version=${{ steps.version.outputs.release_version }}
 
       - name: Validate NuGet API key
         if: matrix.target == 'linux-x64'
@@ -106,14 +122,13 @@ jobs:
         if: matrix.target == 'linux-x64'
         shell: bash
         run: |
-          package_version="0.0.${{ github.run_number }}"
           dotnet pack ${{ env.PROJECT_PATH }} \
             --configuration Release \
             --output "${{ github.workspace }}/nuget" \
-            -p:Version="$package_version"
+            -p:Version="${{ steps.version.outputs.package_version }}"
 
       - name: Push NuGet tool
-        if: matrix.target == 'linux-x64' && github.event_name == 'push'
+        if: matrix.target == 'linux-x64'
         shell: bash
         run: |
           dotnet nuget push "${{ github.workspace }}/nuget"/*.nupkg \
@@ -122,15 +137,17 @@ jobs:
             --skip-duplicate
 
       - name: Publish
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: "${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}-${{ matrix.target }}*"
-          body_path: ${{ env.PROJECT_NAME }}/doc/release/release-notes-${{ steps.version.outputs.version }}.md
+          files: "${{ env.PROJECT_NAME }}-${{ steps.version.outputs.release_version }}-${{ matrix.target }}*"
+          body_path: ${{ env.PROJECT_NAME }}/doc/release/release-notes-${{ steps.version.outputs.release_tag }}.md
           prerelease: endsWith(github.ref, 'prerelease')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   docker:
     needs: release
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       -
