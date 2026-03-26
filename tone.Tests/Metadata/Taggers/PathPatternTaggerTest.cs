@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
+using System.Reflection;
 using GrokNet;
 using tone.Metadata.Taggers;
 using tone.Tests._TestHelpers;
@@ -11,25 +10,41 @@ namespace tone.Tests.Metadata.Taggers;
 public class PathPatternTaggerTest
 {
     [Fact]
-    public async void TestSimpleConditions()
+    public void TestMapsSupportedMetadataFields()
     {
-        var metadata = new MockMetadata
+        var metadata = new MockMetadata();
+        var results = new GrokResult(new List<GrokItem>
         {
-            Path = "input/Fantasy/J.K. Rowling/Quidditch Through the Ages/"
-        };
-        var customPatternStream = new MemoryStream(Encoding.Default.GetBytes("NOTDIRSEP [^/\\\\]*"));
-        var grokDefinitions = new List<Grok>()
-        {
-            new("input/%{NOTDIRSEP:genre}/%{NOTDIRSEP:artist}/%{NOTDIRSEP:title}", customPatternStream),
-        };
-        /*
-        var subject = new PathPatternTagger(grokDefinitions);
-        var actual = await subject.UpdateAsync(metadata);
-        
-        Assert.True(actual);
+            new("Genre", "Fantasy"),
+            new("Artist", "J.K. Rowling"),
+            new("Title", "Quidditch Through the Ages"),
+            new("IgnoreDummy", "ignored"),
+            new("Unknown", "ignored")
+        });
+
+        var mapResultsMethod = typeof(PathPatternTagger).GetMethod("MapResults", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(mapResultsMethod);
+        mapResultsMethod!.Invoke(null, new object?[] { results, metadata });
+
         Assert.Equal("Fantasy", metadata.Genre);
         Assert.Equal("J.K. Rowling", metadata.Artist);
         Assert.Equal("Quidditch Through the Ages", metadata.Title);
-        */
+    }
+    
+    [Fact]
+    public void TestIgnoresNullResults()
+    {
+        var metadata = new MockMetadata
+        {
+            Genre = "Existing Genre"
+        };
+
+        var mapResultsMethod = typeof(PathPatternTagger).GetMethod("MapResults", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(mapResultsMethod);
+        mapResultsMethod!.Invoke(null, new object?[] { null, metadata });
+
+        Assert.Equal("Existing Genre", metadata.Genre);
     }
 }
