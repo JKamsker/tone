@@ -13,6 +13,8 @@ env:
 jobs:
   release:
     name: Release
+    env:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
     strategy:
       matrix:
         kind: [
@@ -69,14 +71,6 @@ jobs:
         id: version
         uses: battila7/get-version-action@v2
 
-      - name: Replace string in file
-        uses: MathieuSoysal/replace-string-in-file@v1.1.0
-        with:
-          file: ${{ env.PROJECT_NAME }}/Program.cs
-          old-string: "@package_version@"
-          new-string: ${{ steps.version.outputs.version-without-v }}
-          
-          
       - name: Build
         id: build
         shell: bash
@@ -85,9 +79,9 @@ jobs:
 
           
           if [ "${{ matrix.target }}" == "osx-arm64" ]; then
-            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:EnableCompressionInSingleFile=false -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
+            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:Version=${{ steps.version.outputs.version-without-v }} -p:EnableCompressionInSingleFile=false -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
           else 
-            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
+            dotnet publish ${{ env.PROJECT_PATH }} --framework ${{ env.DOTNET_FRAMEWORK }} --runtime "${{ matrix.target }}" -c Release -p:Version=${{ steps.version.outputs.version-without-v }} -p:PublishSingleFile=true --self-contained true -p:PublishReadyToRun=true -p:PublishTrimmed=true -o "$release_name"
           fi
           
           if [ "${{ matrix.target }}" == "win-x64" ]; then
@@ -97,7 +91,36 @@ jobs:
           fi
           rm -r "$release_name"
       - name: Test
-        run: dotnet test --configuration Release /p:Version=${{ steps.version.outputs.version-without-v }} --no-build          
+        run: dotnet test --configuration Release /p:Version=${{ steps.version.outputs.version-without-v }}
+
+      - name: Validate NuGet API key
+        if: matrix.target == 'linux-x64'
+        shell: bash
+        run: |
+          if [ -z "${NUGET_API_KEY:-}" ]; then
+            echo "NUGET_API_KEY is not set"
+            exit 1
+          fi
+
+      - name: Pack NuGet tool
+        if: matrix.target == 'linux-x64'
+        shell: bash
+        run: |
+          package_version="0.0.${{ github.run_number }}"
+          dotnet pack ${{ env.PROJECT_PATH }} \
+            --configuration Release \
+            --output "${{ github.workspace }}/nuget" \
+            -p:Version="$package_version"
+
+      - name: Push NuGet tool
+        if: matrix.target == 'linux-x64' && github.event_name == 'push'
+        shell: bash
+        run: |
+          dotnet nuget push "${{ github.workspace }}/nuget"/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:

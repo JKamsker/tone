@@ -120,7 +120,7 @@ public class ChptFmtNativeMetadataFormatTest
         var outputStream = new MemoryStream();
 
         Assert.True(await _subject.WriteAsync(metadata, outputStream));
-        Assert.Equal(SimpleChaptersOutput, outputStream.StreamToString());
+        Assert.Equal(SimpleChaptersOutput.ReplaceLineEndings(), outputStream.StreamToString().ReplaceLineEndings());
     }
     
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using ATL;
 using GrokNet;
@@ -38,6 +39,11 @@ using Log = Serilog.Log;
 try
 {
     var debugMode = args.Contains("--debug");
+    var applicationVersion = Assembly.GetEntryAssembly()?
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+        .InformationalVersion?
+        .Split('+')[0]
+        ?? "unknown";
     
     // atldotnet basic settings to change the common behaviour
     Settings.UseFileNameWhenNoTitle = false; // don't fallback to filename when no title is set
@@ -231,7 +237,7 @@ try
         config.UseStrictParsing();
         config.CaseSensitivity(CaseSensitivity.None);
         config.SetApplicationName("tone");
-        config.SetApplicationVersion("@package_version@");
+        config.SetApplicationVersion(applicationVersion);
         config.ValidateExamples();
         config.AddCommand<DumpCommand>("dump")
             .WithDescription("dump metadata for files and directories (directories are traversed recursively)")

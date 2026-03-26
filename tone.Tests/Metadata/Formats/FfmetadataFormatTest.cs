@@ -752,7 +752,7 @@ encoder=Lavf58.29.100
         Assert.Equal("Spinnentanz", actual.Value.Title);
         Assert.Equal(@"Elemental Assassin 2: Zwar hat sich die erfolgreiche Auftragsmörderin Gin Blanco offiziell zur Ruhe gesetzt, doch der Ärger reißt einfach nicht ab:
 
-Als zwei Punks versuchen, Gins Restaurant auszurauben, fallen Schüsse - doch ungewöhnlicherweise is...", actual.Value.Description);
+Als zwei Punks versuchen, Gins Restaurant auszurauben, fallen Schüsse - doch ungewöhnlicherweise is...".ReplaceLineEndings(), actual.Value.Description.ReplaceLineEndings());
         Assert.Equal(111, actual.Value.Chapters.Count);
 
         var firstChapter = actual.Value.Chapters.First();

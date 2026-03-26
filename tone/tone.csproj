@@ -3,8 +3,22 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-        <LangVersion>10</LangVersion>
+        <LangVersion>12.0</LangVersion>
         <Nullable>enable</Nullable>
+        <Version>0.0.0</Version>
+        <PackageId>tone</PackageId>
+        <Title>tone</Title>
+        <Description>Cross-platform audio tagger and metadata editor for mp3, m4b, flac, and more.</Description>
+        <Authors>JKamsker</Authors>
+        <PackageTags>audio;metadata;tagger;cli;dotnet-tool;m4b;mp3;flac</PackageTags>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/JKamsker/tone</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/JKamsker/tone</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IsPackable>true</IsPackable>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>tone</ToolCommandName>
         <!--
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>true</SelfContained>
